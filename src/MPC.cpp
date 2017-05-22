@@ -8,8 +8,8 @@ using CppAD::AD;
 // We set the number of timesteps to 25
 // and the timestep evaluation frequency or evaluation
 // period to 0.05.
-size_t N = 10;
-double dt = 0.1;
+size_t N = 20;
+double dt = 0.05;
 
 // This value assumes the model presented in the classroom is used.
 //
@@ -25,7 +25,7 @@ const double Lf = 2.67;
 
 // Both the reference cross track and orientation errors are 0.
 // The reference velocity is set to 40 mph.
-double ref_cte = -1;
+double ref_cte = 0;
 double ref_epsi = 0;
 double ref_v = 20*.447;
 
@@ -179,21 +179,8 @@ void MPC::Init(Eigen::VectorXd x0)
   vars_ = Dvector(n_vars);
   for (int i = 0; i < n_vars; i++) {
     vars_[i] = 0.0;
-    // Set the initial variable values
-    // vars_[x_start+i] = x;
-    // vars_[y_start+i] = y;
-    // vars_[psi_start+i] = psi;
-    // vars_[v_start+i] = v;
-    // vars_[cte_start+i] = cte;
-    // vars_[epsi_start+i] = epsi;
   }
-  // Set the initial variable values
-  vars_[x_start] = x;
-  vars_[y_start] = y;
-  vars_[psi_start] = psi;
-  vars_[v_start] = v;
-  vars_[cte_start] = cte;
-  vars_[epsi_start] = epsi;
+  // // Set the initial variable values
 
   // Lower and upper limits for x
   vars_lowerbound_ = Dvector(n_vars);
@@ -230,6 +217,30 @@ void MPC::Init(Eigen::VectorXd x0)
     constraints_lowerbound_[i] = 0;
     constraints_upperbound_[i] = 0;
   }
+
+  cout<<"Initialization complete."<<endl;
+  is_initialized_ = true;
+}
+MPC_OUTPUT MPC::Solve(Eigen::VectorXd x0, Eigen::VectorXd coeffs) {
+
+  if(!is_initialized_)
+  {
+    Init(x0);
+  }
+  double x = x0[0];
+  double y = x0[1];
+  double psi = x0[2];
+  double v = x0[3];
+  double cte = x0[4];
+  double epsi = x0[5];
+
+  vars_[x_start] = x;
+  vars_[y_start] = y;
+  vars_[psi_start] = psi;
+  vars_[v_start] = v;
+  vars_[cte_start] = cte;
+  vars_[epsi_start] = epsi;
+
   constraints_lowerbound_[x_start] = x;
   constraints_lowerbound_[y_start] = y;
   constraints_lowerbound_[psi_start] = psi;
@@ -243,15 +254,7 @@ void MPC::Init(Eigen::VectorXd x0)
   constraints_upperbound_[v_start] = v;
   constraints_upperbound_[cte_start] = cte;
   constraints_upperbound_[epsi_start] = epsi;
-  cout<<"Initialization complete."<<endl;
-  is_initialized_ = true;
-}
-MPC_OUTPUT MPC::Solve(Eigen::VectorXd x0, Eigen::VectorXd coeffs) {
 
-  // if(!is_initialized_)
-  // {
-    Init(x0);
-  // }
   // Object that computes objective and constraints
   FG_eval fg_eval(coeffs);
 
@@ -291,8 +294,9 @@ MPC_OUTPUT MPC::Solve(Eigen::VectorXd x0, Eigen::VectorXd coeffs) {
   vector<double> next_x_vals(sol_x.data()+x_start+1, sol_x.data()+x_start+6);
   vector<double> next_y_vals(sol_x.data()+y_start+1, sol_x.data()+y_start+6);
 
-  double steering = sol_x[delta_start+2];
-  double throttle = sol_x[a_start+2];
+  double steering = sol_x[delta_start+4];
+  double throttle = sol_x[a_start+4];
+
   // if(cost > 20.0)
   // {
   //   throttle = 0.01;
