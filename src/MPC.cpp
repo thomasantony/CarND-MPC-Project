@@ -1,6 +1,5 @@
 #include "MPC.h"
 #include <math.h>
-#include <cppad/ipopt/solve.hpp>
 #include "Eigen-3.3/Eigen/Core"
 #include "Eigen-3.3/Eigen/QR"
 
@@ -9,8 +8,8 @@ using CppAD::AD;
 // We set the number of timesteps to 25
 // and the timestep evaluation frequency or evaluation
 // period to 0.05.
-size_t N = 25;
-double dt = 0.05;
+size_t N = 10;
+double dt = 0.1;
 
 // This value assumes the model presented in the classroom is used.
 //
@@ -26,9 +25,9 @@ const double Lf = 2.67;
 
 // Both the reference cross track and orientation errors are 0.
 // The reference velocity is set to 40 mph.
-double ref_cte = 0;
+double ref_cte = -1;
 double ref_epsi = 0;
-double ref_v = 40*.45;
+double ref_v = 20*.447;
 
 // The solver takes all the state variables and actuator
 // variables in a singular vector. Thus, we should to establish
@@ -158,10 +157,10 @@ class FG_eval {
 MPC::MPC() {}
 MPC::~MPC() {}
 
-MPC_OUTPUT MPC::Solve(Eigen::VectorXd x0, Eigen::VectorXd coeffs) {
+void MPC::Init(Eigen::VectorXd x0)
+{
   size_t i;
-  typedef CPPAD_TESTVECTOR(double) Dvector;
-
+  cout<<"Initializing optimizer..."<<endl;
   double x = x0[0];
   double y = x0[1];
   double psi = x0[2];
@@ -177,67 +176,82 @@ MPC_OUTPUT MPC::Solve(Eigen::VectorXd x0, Eigen::VectorXd coeffs) {
 
   // Initial value of the independent variables.
   // Should be 0 except for the initial values.
-  Dvector vars(n_vars);
+  vars_ = Dvector(n_vars);
   for (int i = 0; i < n_vars; i++) {
-    vars[i] = 0.0;
+    vars_[i] = 0.0;
+    // Set the initial variable values
+    // vars_[x_start+i] = x;
+    // vars_[y_start+i] = y;
+    // vars_[psi_start+i] = psi;
+    // vars_[v_start+i] = v;
+    // vars_[cte_start+i] = cte;
+    // vars_[epsi_start+i] = epsi;
   }
   // Set the initial variable values
-  vars[x_start] = x;
-  vars[y_start] = y;
-  vars[psi_start] = psi;
-  vars[v_start] = v;
-  vars[cte_start] = cte;
-  vars[epsi_start] = epsi;
+  vars_[x_start] = x;
+  vars_[y_start] = y;
+  vars_[psi_start] = psi;
+  vars_[v_start] = v;
+  vars_[cte_start] = cte;
+  vars_[epsi_start] = epsi;
 
   // Lower and upper limits for x
-  Dvector vars_lowerbound(n_vars);
-  Dvector vars_upperbound(n_vars);
+  vars_lowerbound_ = Dvector(n_vars);
+  vars_upperbound_ = Dvector(n_vars);
 
   // Set all non-actuators upper and lowerlimits
   // to the max negative and positive values.
   for (int i = 0; i < delta_start; i++) {
-    vars_lowerbound[i] = -1.0e19;
-    vars_upperbound[i] = 1.0e19;
+    vars_lowerbound_[i] = -1.0e19;
+    vars_upperbound_[i] = 1.0e19;
   }
 
   // The upper and lower limits of delta are set to -25 and 25
   // degrees (values in radians).
   // NOTE: Feel free to change this to something else.
   for (int i = delta_start; i < a_start; i++) {
-    vars_lowerbound[i] = -0.436332;
-    vars_upperbound[i] = 0.436332;
+    vars_lowerbound_[i] = -0.436332;
+    vars_upperbound_[i] = 0.436332;
   }
 
   // Acceleration/decceleration upper and lower limits.
   // NOTE: Feel free to change this to something else.
   for (int i = a_start; i < n_vars; i++) {
-    vars_lowerbound[i] = -1.0;
-    vars_upperbound[i] = 1.0;
+    vars_lowerbound_[i] = -1.0;
+    vars_upperbound_[i] = 1.0;
   }
 
   // Lower and upper limits for constraints
   // All of these should be 0 except the initial
   // state indices.
-  Dvector constraints_lowerbound(n_constraints);
-  Dvector constraints_upperbound(n_constraints);
+  constraints_lowerbound_ = Dvector(n_constraints);
+  constraints_upperbound_ = Dvector(n_constraints);
   for (int i = 0; i < n_constraints; i++) {
-    constraints_lowerbound[i] = 0;
-    constraints_upperbound[i] = 0;
+    constraints_lowerbound_[i] = 0;
+    constraints_upperbound_[i] = 0;
   }
-  constraints_lowerbound[x_start] = x;
-  constraints_lowerbound[y_start] = y;
-  constraints_lowerbound[psi_start] = psi;
-  constraints_lowerbound[v_start] = v;
-  constraints_lowerbound[cte_start] = cte;
-  constraints_lowerbound[epsi_start] = epsi;
+  constraints_lowerbound_[x_start] = x;
+  constraints_lowerbound_[y_start] = y;
+  constraints_lowerbound_[psi_start] = psi;
+  constraints_lowerbound_[v_start] = v;
+  constraints_lowerbound_[cte_start] = cte;
+  constraints_lowerbound_[epsi_start] = epsi;
 
-  constraints_upperbound[x_start] = x;
-  constraints_upperbound[y_start] = y;
-  constraints_upperbound[psi_start] = psi;
-  constraints_upperbound[v_start] = v;
-  constraints_upperbound[cte_start] = cte;
-  constraints_upperbound[epsi_start] = epsi;
+  constraints_upperbound_[x_start] = x;
+  constraints_upperbound_[y_start] = y;
+  constraints_upperbound_[psi_start] = psi;
+  constraints_upperbound_[v_start] = v;
+  constraints_upperbound_[cte_start] = cte;
+  constraints_upperbound_[epsi_start] = epsi;
+  cout<<"Initialization complete."<<endl;
+  is_initialized_ = true;
+}
+MPC_OUTPUT MPC::Solve(Eigen::VectorXd x0, Eigen::VectorXd coeffs) {
 
+  // if(!is_initialized_)
+  // {
+    Init(x0);
+  // }
   // Object that computes objective and constraints
   FG_eval fg_eval(coeffs);
 
@@ -253,8 +267,8 @@ MPC_OUTPUT MPC::Solve(Eigen::VectorXd x0, Eigen::VectorXd coeffs) {
 
   // solve the problem
   CppAD::ipopt::solve<Dvector, FG_eval>(
-      options, vars, vars_lowerbound, vars_upperbound, constraints_lowerbound,
-      constraints_upperbound, fg_eval, solution);
+      options, vars_, vars_lowerbound_, vars_upperbound_, constraints_lowerbound_,
+      constraints_upperbound_, fg_eval, solution);
 
   //
   // Check some of the solution values
@@ -264,11 +278,29 @@ MPC_OUTPUT MPC::Solve(Eigen::VectorXd x0, Eigen::VectorXd coeffs) {
 
   auto cost = solution.obj_value;
   std::cout << "Cost " << cost << std::endl;
-
+  // if(time_ctr > -1 && cost == 0)
+  // {
+  //   solution = last_sol_;
+  //
+  //   if(time_ctr+4<N-1){
+  //     time_ctr++;
+  //   }
+  // }
+  time_ctr = 0;
   auto sol_x = solution.x;
-  vector<double> next_x_vals(sol_x.data()+x_start+1, sol_x.data()+x_start+10);
-  vector<double> next_y_vals(sol_x.data()+y_start+1, sol_x.data()+y_start+10);
+  vector<double> next_x_vals(sol_x.data()+x_start+1, sol_x.data()+x_start+6);
+  vector<double> next_y_vals(sol_x.data()+y_start+1, sol_x.data()+y_start+6);
 
-  auto output = MPC_OUTPUT(sol_x[delta_start+2], sol_x[a_start+2], next_x_vals, next_y_vals);
+  double steering = sol_x[delta_start+2];
+  double throttle = sol_x[a_start+2];
+  // if(cost > 20.0)
+  // {
+  //   throttle = 0.01;
+  //   steering = 0.0;
+  // }
+  auto output = MPC_OUTPUT(steering, throttle, next_x_vals, next_y_vals);
+
+  last_sol_ = solution;
+
   return output;
 }

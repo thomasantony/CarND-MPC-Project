@@ -118,7 +118,7 @@ int main() {
           double py = j[1]["y"];
           double psi = j[1]["psi"];
           double v = j[1]["speed"];
-          v = v*0.45; // convert to m/s
+          v = v*0.447; // convert to m/s
 
           vector<double> ptsx_rel, ptsy_rel;
           std::tie(ptsx_rel, ptsy_rel) = transform_points(ptsx, ptsy, {px, py, psi});
@@ -131,9 +131,6 @@ int main() {
           double epsi = -atan(polyeval_slope(coeffs, 0.0));
           /*
           * Calculate steeering angle and throttle using MPC.
-          *
-          * Both are in between [-1, 1].
-          *
           */
           Eigen::VectorXd state(6);
           state << 0, 0, 0, v, cte, epsi;
@@ -164,9 +161,8 @@ int main() {
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Yellow line
 
-          msgJson["next_x"] = next_x_vals;
-          msgJson["next_y"] = next_y_vals;
-
+          msgJson["next_x"] = {10.0};//next_x_vals;
+          msgJson["next_y"] = {0.0};//next_y_vals;
 
           auto msg = "42[\"steer\"," + msgJson.dump() + "]";
 

@@ -3,11 +3,13 @@
 
 #include <vector>
 #include <cppad/cppad.hpp>
+#include <cppad/ipopt/solve.hpp>
 #include "Eigen-3.3/Eigen/Core"
 
 using namespace std;
 // Return controls, and predicted x and y values
 using MPC_OUTPUT = tuple<double, double, vector<double>, vector<double>>;
+typedef CPPAD_TESTVECTOR(double) Dvector;
 
 // Evaluate a polynomial.
 template<typename scalar_t>
@@ -53,12 +55,22 @@ tuple<scalar_t, scalar_t> local_transform(tuple<scalar_t, scalar_t> input, vecto
 class MPC {
  public:
   MPC();
-
   virtual ~MPC();
 
+  void Init(Eigen::VectorXd x0);
   // Solve the model given an initial state and polynomial coefficients.
   // Return the first actuations.
   MPC_OUTPUT Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs);
+private:
+  CppAD::ipopt::solve_result<Dvector> last_sol_;
+  int time_ctr = -1;
+  bool is_initialized_ = false;
+
+  Dvector vars_;
+  Dvector constraints_lowerbound_;
+  Dvector constraints_upperbound_;
+  Dvector vars_lowerbound_;
+  Dvector vars_upperbound_;
 };
 
 #endif /* MPC_H */
