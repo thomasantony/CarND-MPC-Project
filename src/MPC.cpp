@@ -276,7 +276,7 @@ MPC_OUTPUT MPC::Solve(Eigen::VectorXd x0, Eigen::VectorXd coeffs) {
   double steering = 0.0, throttle = 0.0;
 
   const double num_avg = 1;
-  double total_lag = tmr.elapsed() + config_.p_lag;
+  double total_lag = config_.p_lag;// + tmr.elapsed();
 
   // Accounting for lag
   const int ind_start = std::min(std::ceil(total_lag/dt_), N_-num_avg);
