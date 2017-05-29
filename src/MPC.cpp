@@ -27,7 +27,7 @@ const double Lf = 2.67;
 // The reference velocity is set to 40 mph.
 double ref_cte = 0;
 double ref_epsi = 0;
-double ref_v = 20*.447;
+double ref_v = 40*.447;
 
 // The solver takes all the state variables and actuator
 // variables in a singular vector. Thus, we should to establish
@@ -66,13 +66,13 @@ class FG_eval {
 
     // Minimize the use of actuators.
     for (int i = 0; i < N - 1; i++) {
-      fg[0] += CppAD::pow(vars[delta_start + i], 2);
+      fg[0] += 100*CppAD::pow(vars[delta_start + i], 2);
       fg[0] += CppAD::pow(vars[a_start + i], 2);
     }
 
     // Minimize the value gap between sequential actuations.
     for (int i = 0; i < N - 2; i++) {
-      fg[0] += CppAD::pow(vars[delta_start + i + 1] - vars[delta_start + i], 2);
+      fg[0] += 10*CppAD::pow(vars[delta_start + i + 1] - vars[delta_start + i], 2);
       fg[0] += CppAD::pow(vars[a_start + i + 1] - vars[a_start + i], 2);
     }
 
@@ -157,7 +157,7 @@ class FG_eval {
 MPC::MPC() {}
 MPC::~MPC() {}
 
-void MPC::Init(Eigen::VectorXd x0)
+void MPC::Init(Eigen::VectorXd x0)//, Weights weights)
 {
   size_t i;
   cout<<"Initializing optimizer..."<<endl;
@@ -167,6 +167,8 @@ void MPC::Init(Eigen::VectorXd x0)
   double v = x0[3];
   double cte = x0[4];
   double epsi = x0[5];
+
+  // weights_ = weights;
 
   // number of independent variables
   // N timesteps == N - 1 actuations
@@ -196,9 +198,10 @@ void MPC::Init(Eigen::VectorXd x0)
   // The upper and lower limits of delta are set to -25 and 25
   // degrees (values in radians).
   // NOTE: Feel free to change this to something else.
+  const double STEERING_MAG = 15*M_PI/180;
   for (int i = delta_start; i < a_start; i++) {
-    vars_lowerbound_[i] = -0.436332;
-    vars_upperbound_[i] = 0.436332;
+    vars_lowerbound_[i] = -STEERING_MAG;
+    vars_upperbound_[i] = +STEERING_MAG;
   }
 
   // Acceleration/decceleration upper and lower limits.
@@ -263,7 +266,7 @@ MPC_OUTPUT MPC::Solve(Eigen::VectorXd x0, Eigen::VectorXd coeffs) {
   options += "Integer print_level  0\n";
   options += "Sparse  true        forward\n";
   options += "Sparse  true        reverse\n";
-  options += "Numeric max_cpu_time          0.05\n";
+  options += "Numeric max_cpu_time          0.5\n";
 
   // place to return solution
   CppAD::ipopt::solve_result<Dvector> solution;
@@ -281,26 +284,27 @@ MPC_OUTPUT MPC::Solve(Eigen::VectorXd x0, Eigen::VectorXd coeffs) {
 
   auto cost = solution.obj_value;
   std::cout << "Cost " << cost << std::endl;
-  // if(time_ctr > -1 && cost == 0)
-  // {
-  //   solution = last_sol_;
-  //
-  //   if(time_ctr+4<N-1){
-  //     time_ctr++;
-  //   }
-  // }
+
   time_ctr = 0;
   auto sol_x = solution.x;
-  vector<double> next_x_vals(sol_x.data()+x_start+1, sol_x.data()+x_start+6);
-  vector<double> next_y_vals(sol_x.data()+y_start+1, sol_x.data()+y_start+6);
+  vector<double> next_x_vals(sol_x.data()+x_start+1, sol_x.data()+y_start);
+  vector<double> next_y_vals(sol_x.data()+y_start+1, sol_x.data()+psi_start);
 
-  double steering = sol_x[delta_start+4];
-  double throttle = sol_x[a_start+4];
+  double steering = 0.0, throttle = 0.0;
 
-  // if(cost > 20.0)
+  int num_avg = 3.0;
+  for(auto i=0;i < num_avg; i++)
+  {
+    steering += sol_x[delta_start+3]/num_avg;
+    throttle += sol_x[a_start+3]/num_avg;
+  }
+
+  // if(cost > 0 && cost-(ref_v*ref_v) > 500.0)
   // {
-  //   throttle = 0.01;
+  //   ref_v = 10*0.447;
   //   steering = 0.0;
+  // }else{
+  //   ref_v = 40*0.447;
   // }
   auto output = MPC_OUTPUT(steering, throttle, next_x_vals, next_y_vals);
 
