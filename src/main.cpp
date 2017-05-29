@@ -37,8 +37,8 @@ string hasData(string s) {
 // Transforms waypoints into local coordinates
 tuple<vector<double>, vector<double>>
 transform_points(vector<double> ptsx, vector<double> ptsy, vector<double> vehicle) {
-  auto out_x = vector<double>(ptsx.size());
-  auto out_y = vector<double>(ptsy.size());
+  vector<double> out_x;
+  vector<double> out_y;
   double x, y;
   for(auto i=0; i < ptsx.size(); i++)
   {
@@ -191,8 +191,8 @@ int main(int argc, char *argv[]) {
           msgJson["mpc_y"] = mpc_y_vals;
 
           //Display the waypoints/reference line
-          vector<double> next_x_vals(ptsx_rel.data() + 4, ptsx_rel.data() + ptsx_rel.size());
-          vector<double> next_y_vals(ptsy_rel.data() + 4, ptsy_rel.data() + ptsy_rel.size());
+          vector<double> next_x_vals(ptsx_rel.data()+1, ptsx_rel.data() + ptsx_rel.size());
+          vector<double> next_y_vals(ptsy_rel.data()+1, ptsy_rel.data() + ptsy_rel.size());
 
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Yellow line
