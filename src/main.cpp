@@ -105,6 +105,7 @@ Configuration load_config(std::string filename)
   cfg.ref_v = reader.GetReal("ref","v_mph", 25)*.447;
   cfg.w_cte = reader.GetReal("weights", "w_cte", 1.0);
   cfg.w_epsi = reader.GetReal("weights", "w_epsi", 1.0);
+  cfg.w_v = reader.GetReal("weights", "w_v", 1.0);
 
   cfg.w_delta = reader.GetReal("weights", "w_delta", 1.0);
   cfg.w_a = reader.GetReal("weights", "w_a", 1.0);

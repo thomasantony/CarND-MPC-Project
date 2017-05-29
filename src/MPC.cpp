@@ -49,22 +49,22 @@ public:
 
     // The part of the cost based on the reference state.
     for (int i = 0; i < N_; i++) {
-      fg[0] += CppAD::pow(vars[cte_start + i] - config_.ref_cte, 2);
-      fg[0] += 10*CppAD::pow(vars[epsi_start + i] - config_.ref_epsi, 2);
-      fg[0] += CppAD::pow(vars[v_start + i] - config_.ref_v, 2);
+      fg[0] += config_.w_cte*CppAD::pow(vars[cte_start + i] - config_.ref_cte, 2);
+      fg[0] += config_.w_epsi*CppAD::pow(vars[epsi_start + i] - config_.ref_epsi, 2);
+      fg[0] += config_.w_v*CppAD::pow(vars[v_start + i] - config_.ref_v, 2);
       // cout<<"Vel error : "<<vars[v_start + i] - ref_v<<endl;
     }
 
     // Minimize the use of actuators.
     for (int i = 0; i < N_ - 1; i++) {
-      fg[0] += 100*CppAD::pow(vars[delta_start + i], 2);
-      fg[0] += CppAD::pow(vars[a_start + i], 2);
+      fg[0] += config_.w_delta*CppAD::pow(vars[delta_start + i], 2);
+      fg[0] += config_.w_a*CppAD::pow(vars[a_start + i], 2);
     }
 
     // Minimize the value gap between sequential actuations.
     for (int i = 0; i < N_ - 2; i++) {
-      fg[0] += 10*CppAD::pow(vars[delta_start + i + 1] - vars[delta_start + i], 2);
-      fg[0] += CppAD::pow(vars[a_start + i + 1] - vars[a_start + i], 2);
+      fg[0] += config_.w_deltadot*CppAD::pow(vars[delta_start + i + 1] - vars[delta_start + i], 2);
+      fg[0] += config_.w_adot*CppAD::pow(vars[a_start + i + 1] - vars[a_start + i], 2);
     }
 
     //
@@ -266,7 +266,7 @@ MPC_OUTPUT MPC::Solve(Eigen::VectorXd x0, Eigen::VectorXd coeffs) {
   ok &= solution.status == CppAD::ipopt::solve_result<Dvector>::success;
 
   auto cost = solution.obj_value;
-  std::cout << "Cost " << cost << std::endl;
+  // std::cout << "Cost " << cost << std::endl;
 
   time_ctr = 0;
   auto sol_x = solution.x;
@@ -287,6 +287,10 @@ MPC_OUTPUT MPC::Solve(Eigen::VectorXd x0, Eigen::VectorXd coeffs) {
     throttle += sol_x[a_start+i+ind_start]/num_avg;
   }
 
+  if(cost == 0 || cost > 100)
+  {
+    throttle = 0.1;
+  }
   auto output = MPC_OUTPUT(steering, throttle, next_x_vals, next_y_vals);
 
   last_sol_ = solution;
