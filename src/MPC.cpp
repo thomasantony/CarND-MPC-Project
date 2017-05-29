@@ -287,10 +287,6 @@ MPC_OUTPUT MPC::Solve(Eigen::VectorXd x0, Eigen::VectorXd coeffs) {
     throttle += sol_x[a_start+i+ind_start]/num_avg;
   }
 
-  if(cost == 0 || cost > 100)
-  {
-    throttle = 0.1;
-  }
   auto output = MPC_OUTPUT(steering, throttle, next_x_vals, next_y_vals);
 
   last_sol_ = solution;
