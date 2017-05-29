@@ -9,6 +9,7 @@
 #include "Eigen-3.3/Eigen/QR"
 #include "MPC.h"
 #include "json.hpp"
+#include "INIReader.h"
 
 // for convenience
 using json = nlohmann::json;
@@ -92,11 +93,38 @@ Eigen::VectorXd polyfit(vector<double>& xvals, vector<double>& yvals,
   return result;
 }
 
+Configuration load_config(std::string filename)
+{
+  Configuration cfg;
+  // Initialize config file parser
+  INIReader reader(filename);
+  if (reader.ParseError() < 0) {
+    std::cout << "Can't load "<<filename<<std::endl;
+    throw 1;
+  }
+  cfg.ref_v = reader.GetReal("ref","v_mph", 25)*.447;
+  cfg.w_cte = reader.GetReal("weights", "w_cte", 1.0);
+  cfg.w_epsi = reader.GetReal("weights", "w_epsi", 1.0);
+
+  cfg.w_delta = reader.GetReal("weights", "w_delta", 1.0);
+  cfg.w_a = reader.GetReal("weights", "w_a", 1.0);
+  cfg.w_deltadot = reader.GetReal("weights", "w_deltadot", 1.0);
+  cfg.w_adot = reader.GetReal("weights", "w_adot", 1.0);
+
+  cfg.solver_N = reader.GetInteger("solver", "N", 15);
+  cfg.solver_dt = reader.GetReal("solver", "dt", 0.1);
+  cfg.solver_timeout = reader.GetReal("solver", "timeout", 0.5);
+  cfg.params_lag = reader.GetReal("parameters","lag",0.1);
+  return cfg;
+}
 int main() {
   uWS::Hub h;
 
+  // Load solver configuration
+  Configuration cfg = load_config("mpc_config.ini");
+
   // MPC is initialized here!
-  MPC mpc;
+  MPC mpc(cfg);
 
   h.onMessage([&mpc](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
                      uWS::OpCode opCode) {
@@ -155,14 +183,14 @@ int main() {
           msgJson["mpc_y"] = mpc_y_vals;
 
           //Display the waypoints/reference line
-          vector<double> next_x_vals(ptsx_rel.data(), ptsx_rel.data() + ptsx_rel.size());
-          vector<double> next_y_vals(ptsy_rel.data(), ptsy_rel.data() + ptsy_rel.size());
+          vector<double> next_x_vals(ptsx_rel.data() + 4, ptsx_rel.data() + ptsx_rel.size());
+          vector<double> next_y_vals(ptsy_rel.data() + 4, ptsy_rel.data() + ptsy_rel.size());
 
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Yellow line
 
-          msgJson["next_x"] = {10.0};//next_x_vals;
-          msgJson["next_y"] = {0.0};//next_y_vals;
+          msgJson["next_x"] = next_x_vals;
+          msgJson["next_y"] = next_y_vals;
 
           auto msg = "42[\"steer\"," + msgJson.dump() + "]";
 

@@ -52,7 +52,11 @@ tuple<scalar_t, scalar_t> local_transform(tuple<scalar_t, scalar_t> input, vecto
                         -x * CppAD::sin(theta0) + y * CppAD::cos(theta0));
 }
 
-struct Weights {
+struct Configuration {
+  double ref_v;
+  double ref_epsi;
+  double ref_cte;
+
   double w_cte;
   double w_epsi;
   double w_v;
@@ -62,14 +66,20 @@ struct Weights {
 
   double w_deltadot;
   double w_adot;
+
+  int solver_N;
+  double solver_dt;
+  double solver_timeout;
+
+  double params_lag;
 };
 
 class MPC {
  public:
-  MPC();
+  MPC(Configuration& config);
   virtual ~MPC();
 
-  void Init(Eigen::VectorXd x0);//, Weights weights);
+  void Init(Eigen::VectorXd x0);
   // Solve the model given an initial state and polynomial coefficients.
   // Return the first actuations.
   MPC_OUTPUT Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs);
@@ -77,7 +87,13 @@ private:
   CppAD::ipopt::solve_result<Dvector> last_sol_;
   int time_ctr = -1;
   bool is_initialized_ = false;
-  Weights weights_;
+
+  int N_;
+  double dt_;
+  Configuration& config_;
+
+  // ipopt options
+  std::string options_;
 
   Dvector vars_;
   Dvector constraints_lowerbound_;
