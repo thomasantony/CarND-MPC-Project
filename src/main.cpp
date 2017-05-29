@@ -114,14 +114,22 @@ Configuration load_config(std::string filename)
   cfg.solver_N = reader.GetInteger("solver", "N", 15);
   cfg.solver_dt = reader.GetReal("solver", "dt", 0.1);
   cfg.solver_timeout = reader.GetReal("solver", "timeout", 0.5);
-  cfg.params_lag = reader.GetReal("parameters","lag",0.1);
+  cfg.p_lag = reader.GetReal("parameters","lag",0.1);
+  cfg.p_steering_limit = reader.GetReal("parameters","steering_limit_deg",20)*M_PI/180;
   return cfg;
 }
-int main() {
+int main(int argc, char *argv[]) {
   uWS::Hub h;
 
+  std::string config_file;
+  if(argc > 1)
+  {
+    config_file = argv[1];
+  }else{
+    config_file = "mpc_config.ini";
+  }
   // Load solver configuration
-  Configuration cfg = load_config("mpc_config.ini");
+  Configuration cfg = load_config(config_file);
 
   // MPC is initialized here!
   MPC mpc(cfg);

@@ -1,5 +1,6 @@
 #include "MPC.h"
 #include <math.h>
+#include <time.h>
 #include "Eigen-3.3/Eigen/Core"
 #include "Eigen-3.3/Eigen/QR"
 
@@ -185,7 +186,7 @@ void MPC::Init(Eigen::VectorXd x0)
   // The upper and lower limits of delta are set to -25 and 25
   // degrees (values in radians).
   // NOTE: Feel free to change this to something else.
-  const double STEERING_MAG = 20*M_PI/180;
+  const double STEERING_MAG = config_.p_steering_limit;
   for (int i = delta_start; i < a_start; i++) {
     vars_lowerbound_[i] = -STEERING_MAG;
     vars_upperbound_[i] = +STEERING_MAG;
@@ -212,6 +213,7 @@ void MPC::Init(Eigen::VectorXd x0)
   is_initialized_ = true;
 }
 MPC_OUTPUT MPC::Solve(Eigen::VectorXd x0, Eigen::VectorXd coeffs) {
+  Timer tmr;
 
   if(!is_initialized_)
   {
@@ -273,12 +275,15 @@ MPC_OUTPUT MPC::Solve(Eigen::VectorXd x0, Eigen::VectorXd coeffs) {
 
   double steering = 0.0, throttle = 0.0;
 
-  const int num_avg = 3;
-  const int ind_start = ceil(config_.params_lag/dt_);   // Accounting for lag
+  const int num_avg = 1;
+  double extra_lag = tmr.elapsed();
+
+  // Accounting for lag
+  const int ind_start = ceil((config_.p_lag + extra_lag)/dt_);
   for(auto i=0;i < num_avg; i++)
   {
-    steering += sol_x[delta_start+3+ind_start]/num_avg;
-    throttle += sol_x[a_start+3+ind_start]/num_avg;
+    steering += sol_x[delta_start+i+ind_start]/num_avg;
+    throttle += sol_x[a_start+i+ind_start]/num_avg;
   }
 
   auto output = MPC_OUTPUT(steering, throttle, next_x_vals, next_y_vals);
