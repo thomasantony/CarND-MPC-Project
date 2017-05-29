@@ -275,17 +275,13 @@ MPC_OUTPUT MPC::Solve(Eigen::VectorXd x0, Eigen::VectorXd coeffs) {
 
   double steering = 0.0, throttle = 0.0;
 
-  const double num_avg = 1;
-  double total_lag = config_.p_lag;// + tmr.elapsed();
+  double total_lag = config_.p_lag + tmr.elapsed();
 
   // Accounting for lag
-  const int ind_start = std::min(std::ceil(total_lag/dt_), N_-num_avg);
+  const int ind_start = std::min(std::ceil(total_lag/dt_), N_-1);
 
-  for(auto i=0;i < num_avg; i++)
-  {
-    steering += sol_x[delta_start+i+ind_start]/num_avg;
-    throttle += sol_x[a_start+i+ind_start]/num_avg;
-  }
+  steering += sol_x[delta_start+ind_start];
+  throttle += sol_x[a_start+ind_start];
 
   auto output = MPC_OUTPUT(steering, throttle, next_x_vals, next_y_vals);
 
