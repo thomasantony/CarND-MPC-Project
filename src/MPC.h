@@ -32,27 +32,6 @@ scalar_t polyeval_slope_cppad(Eigen::VectorXd coeffs, scalar_t x) {
   return result;
 }
 
-// Evaluate a polynomial curvature
-template<typename scalar_t>
-scalar_t polyeval_curvature(Eigen::VectorXd coeffs, scalar_t x) {
-  scalar_t y1 = 0.0;
-  scalar_t y2 = 0.0;
-  for (int i = 1; i < coeffs.size(); i++) {
-    y1 += i*coeffs[i] * pow(x, i-1);
-    if(i > 2)
-    {
-      y2 += i*(i-1)*coeffs[i] * pow(x, i-2);
-    }
-  }
-  // Protect against divide by zero
-  if(std::abs(y2) < 0.00001)
-  {
-    y2 = 0.00001;
-  }
-  return std::abs(std::pow(1.0 + y1*y1, 1.5)/y2);
-
-}
-
 
 /**
  * Converts a point from global coordinates to local coordinates

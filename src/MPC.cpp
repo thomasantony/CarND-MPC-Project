@@ -242,22 +242,6 @@ MPC_OUTPUT MPC::Solve(Eigen::VectorXd x0, Eigen::VectorXd coeffs) {
   cte = cte + (v * sin(epsi) * dt);
   epsi = epsi + v * delta / Lf * dt;
 
-  // Adjust speed based on curvature of road
-  double R_road = polyeval_curvature(coeffs, x);
-  std::cout<<"Radius of curvature "<<R_road<<std::endl;
-  config_.ref_v = config_.v_max;
-  const double V_lo = min(40.0*.447, config_.v_max), V_hi = config_.v_max;
-  const double R_lo = 100, R_hi = 2000;
-  if (R_road < R_lo){
-    config_.ref_v = V_lo;
-  }else{
-    if (R_road < R_hi){
-      config_.ref_v = V_lo + (V_hi-V_lo)*(R_road-R_lo)/(R_hi-R_lo);
-    }else{
-      config_.ref_v = V_hi;
-    }
-  }
-
   vars_[x_start] = x;
   vars_[y_start] = y;
   vars_[psi_start] = psi;
