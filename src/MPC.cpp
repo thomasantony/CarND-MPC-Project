@@ -216,15 +216,12 @@ void MPC::Init(Eigen::VectorXd x0)
   cout<<"Initialization complete."<<endl;
   is_initialized_ = true;
 }
-// Timer tmr;
+
 MPC_OUTPUT MPC::Solve(Eigen::VectorXd x0, Eigen::VectorXd coeffs) {
   if(!is_initialized_)
   {
     Init(x0);
   }
-  // double total_lag = config_.p_lag + tmr.elapsed();
-
-  // tmr.reset();
 
   double x = x0[0];
   double y = x0[1];
@@ -247,9 +244,10 @@ MPC_OUTPUT MPC::Solve(Eigen::VectorXd x0, Eigen::VectorXd coeffs) {
 
   // Adjust speed based on curvature of road
   double R_road = polyeval_curvature(coeffs, x);
-  // std::cout<<"Radius of curvature "<<R_road<<std::endl;
+  std::cout<<"Radius of curvature "<<R_road<<std::endl;
+  config_.ref_v = config_.v_max;
   const double V_lo = min(40.0*.447, config_.v_max), V_hi = config_.v_max;
-  const double R_lo = 2000, R_hi = 10000;
+  const double R_lo = 100, R_hi = 2000;
   if (R_road < R_lo){
     config_.ref_v = V_lo;
   }else{
