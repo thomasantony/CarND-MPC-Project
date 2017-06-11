@@ -12,7 +12,7 @@ using namespace std;
 using MPC_OUTPUT = tuple<double, double, vector<double>, vector<double>>;
 typedef CPPAD_TESTVECTOR(double) Dvector;
 
-// Evaluate a polynomial.
+// Evaluate a polynomial (using CPPAD).
 template<typename scalar_t>
 scalar_t polyeval_cppad(Eigen::VectorXd coeffs, scalar_t x) {
   scalar_t result = 0.0;
@@ -22,7 +22,7 @@ scalar_t polyeval_cppad(Eigen::VectorXd coeffs, scalar_t x) {
   return result;
 }
 
-// Evaluate a polynomial slope.
+// Evaluate a polynomial slope (using CPPAD).
 template<typename scalar_t>
 scalar_t polyeval_slope_cppad(Eigen::VectorXd coeffs, scalar_t x) {
   scalar_t result = 0.0;
@@ -30,6 +30,27 @@ scalar_t polyeval_slope_cppad(Eigen::VectorXd coeffs, scalar_t x) {
     result += i*coeffs[i] * CppAD::pow(x, i-1);
   }
   return result;
+}
+
+// Evaluate a polynomial curvature
+template<typename scalar_t>
+scalar_t polyeval_curvature(Eigen::VectorXd coeffs, scalar_t x) {
+  scalar_t y1 = 0.0;
+  scalar_t y2 = 0.0;
+  for (int i = 1; i < coeffs.size(); i++) {
+    y1 += i*coeffs[i] * pow(x, i-1);
+    if(i > 2)
+    {
+      y2 += i*(i-1)*coeffs[i] * pow(x, i-2);
+    }
+  }
+  // Protect against divide by zero
+  if(std::abs(y2) < 0.00001)
+  {
+    y2 = 0.00001;
+  }
+  return std::abs(std::pow(1.0 + y1*y1, 1.5)/y2);
+
 }
 
 
@@ -54,6 +75,7 @@ tuple<scalar_t, scalar_t> local_transform(tuple<scalar_t, scalar_t> input, vecto
 }
 
 struct Configuration {
+  double v_max;
   double ref_v;
   double ref_epsi;
   double ref_cte;
@@ -110,6 +132,8 @@ private:
   int N_;
   double dt_;
   Configuration& config_;
+
+  Dvector last_control_;
 
   // ipopt options
   std::string options_;

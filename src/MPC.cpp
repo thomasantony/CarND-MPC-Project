@@ -47,7 +47,9 @@ public:
     // Any additions to the cost should be added to `fg[0]`.
     fg[0] = 0;
 
+
     // The part of the cost based on the reference state.
+    // std::cout<<"Ref v : "<<config_.ref_v<<std::endl;
     for (int i = 0; i < N_; i++) {
       fg[0] += config_.w_cte*CppAD::pow(vars[cte_start + i] - config_.ref_cte, 2);
       fg[0] += config_.w_epsi*CppAD::pow(vars[epsi_start + i] - config_.ref_epsi, 2);
@@ -170,7 +172,6 @@ void MPC::Init(Eigen::VectorXd x0)
   for (int i = 0; i < n_vars; i++) {
     vars_[i] = 0.0;
   }
-  // // Set the initial variable values
 
   // Lower and upper limits for x
   vars_lowerbound_ = Dvector(n_vars);
@@ -209,22 +210,55 @@ void MPC::Init(Eigen::VectorXd x0)
     constraints_upperbound_[i] = 0;
   }
 
+  // Initialize saved control vector
+  last_control_ = Dvector(2);
+
   cout<<"Initialization complete."<<endl;
   is_initialized_ = true;
 }
+// Timer tmr;
 MPC_OUTPUT MPC::Solve(Eigen::VectorXd x0, Eigen::VectorXd coeffs) {
-  Timer tmr;
-
   if(!is_initialized_)
   {
     Init(x0);
   }
+  // double total_lag = config_.p_lag + tmr.elapsed();
+
+  // tmr.reset();
+
   double x = x0[0];
   double y = x0[1];
   double psi = x0[2];
   double v = x0[3];
   double cte = x0[4];
   double epsi = x0[5];
+
+  // Apply Lag compensation
+  double dt = config_.p_lag;
+  double delta = last_control_[0];
+  double a = last_control_[1];
+
+  x = x + v*cos(psi)*dt;
+  y = y + v*sin(psi)*dt;
+  psi = psi + v*delta/Lf *dt;
+  v = v + a*dt;
+  cte = cte + (v * sin(epsi) * dt);
+  epsi = epsi + v * delta / Lf * dt;
+
+  // Adjust speed based on curvature of road
+  double R_road = polyeval_curvature(coeffs, x);
+  // std::cout<<"Radius of curvature "<<R_road<<std::endl;
+  const double V_lo = min(40.0*.447, config_.v_max), V_hi = config_.v_max;
+  const double R_lo = 2000, R_hi = 10000;
+  if (R_road < R_lo){
+    config_.ref_v = V_lo;
+  }else{
+    if (R_road < R_hi){
+      config_.ref_v = V_lo + (V_hi-V_lo)*(R_road-R_lo)/(R_hi-R_lo);
+    }else{
+      config_.ref_v = V_hi;
+    }
+  }
 
   vars_[x_start] = x;
   vars_[y_start] = y;
@@ -250,7 +284,6 @@ MPC_OUTPUT MPC::Solve(Eigen::VectorXd x0, Eigen::VectorXd coeffs) {
   // Object that computes objective and constraints
   FG_eval fg_eval(coeffs, config_);
 
-
   // place to return solution
   CppAD::ipopt::solve_result<Dvector> solution;
 
@@ -273,19 +306,14 @@ MPC_OUTPUT MPC::Solve(Eigen::VectorXd x0, Eigen::VectorXd coeffs) {
   vector<double> next_x_vals(sol_x.data()+x_start+1, sol_x.data()+y_start);
   vector<double> next_y_vals(sol_x.data()+y_start+1, sol_x.data()+psi_start);
 
-  double steering = 0.0, throttle = 0.0;
-
-  double total_lag = config_.p_lag + tmr.elapsed();
-
-  // Accounting for lag
-  const int ind_start = std::min(int(std::round(total_lag/dt_)), N_-1);
-
-  steering += sol_x[delta_start+ind_start];
-  throttle += sol_x[a_start+ind_start];
+  double steering = sol_x[delta_start];
+  double throttle = sol_x[a_start];
 
   auto output = MPC_OUTPUT(steering, throttle, next_x_vals, next_y_vals);
 
   last_sol_ = solution;
+  last_control_[0] = steering;
+  last_control_[1] = throttle;
 
   return output;
 }
