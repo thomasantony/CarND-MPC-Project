@@ -2,7 +2,33 @@
 Self-Driving Car Engineer Nanodegree Program
 
 ---
+# Project Write-Up
 
+The Model Predictive Controller was successfully implemented and tested for speeds up to 60 mph.
+
+## Model and pre-processing
+The model used is the kinematic model described in class. However, the coordinate system was transformed to be relative to the state of the car. All the waypoints were converted into this coordinate system before being passed into the solver. This is performed by the `transform_points` function in `main.cpp`.
+
+## Polynomial fitting
+The polynomial fitting is performed in the `polyfit` function in `main.cpp`, while the evaluation of the polynomial and it's slope are done in the functions `polyeval_cppad` and `polyeval_slope_cppad`, respectively in `MPC.h`. These functions were written to use the `CPPAD` namespace to facilitate automatic differentiation required by IPOPT.
+
+## Timestep selection
+The controller uses IPOPT to solve for the optimal control by propagating this dynamic model forward for a finite time (in this case, 1.5 seconds with a step size of 0.1). These numbers were selected after trial and error. It was found that 1.5 seconds gives enough "look-ahead" capability for the controller without slowing it down too much. Step size of 0.1 seemed good enough to avoid integration errors from building up too much. values up to 2.5 seconds were attempted with step size as small as 0.05. However, they were found to be too slow or cause the solver to not finish in the alloted time.
+
+## Dynamic equations and solution process
+
+The dynamic equations are enforced as equality constraints as seen in lines `109 - 116` of `MPC.cpp`. I have explained this in more detail in one of my answers on the Discussion Forum at:
+https://discussions.udacity.com/t/model-constraints-vs-state-update-equations/250569/2?u=tantony
+
+## Lag compensation
+
+Lag compensation was achieved by propagating the state forward by the given time-lag using the dynamic model, before the data is passed to IPOPT. This can be seen in lines `234 - 243` of `MPC.cpp`. A fixed lag value of 0.1 seconds was used.
+
+## How to run the program
+
+The program comes with a configuration file (example `mpc_config.ini`), that defines the various parameters associated with the controller. These include reference speeds, weights for the multi-objective cost function, steering magnitude, integration step size etc. Multiple config files that have been tuned for different speeds can be found in `mpc_40mph.ini` and  `mpc_60mph.ini`. The program can be started with the configuration file as a command line argument. Example: `./mpc ../mpc_60mph.ini`.
+
+---
 ## Dependencies
 
 * cmake >= 3.5
@@ -22,7 +48,7 @@ Self-Driving Car Engineer Nanodegree Program
   * Mac: `brew install ipopt --with-openblas`
   * Linux
     * You will need a version of Ipopt 3.12.1 or higher. The version available through `apt-get` is 3.11.x. If you can get that version to work great but if not there's a script `install_ipopt.sh` that will install Ipopt. You just need to download the source from the Ipopt [releases page](https://www.coin-or.org/download/source/Ipopt/) or the [Github releases](https://github.com/coin-or/Ipopt/releases) page.
-    * Then call `install_ipopt.sh` with the source directory as the first argument, ex: `bash install_ipopt.sh Ipopt-3.12.1`. 
+    * Then call `install_ipopt.sh` with the source directory as the first argument, ex: `bash install_ipopt.sh Ipopt-3.12.1`.
   * Windows: TODO. If you can use the Linux subsystem and follow the Linux instructions.
 * [CppAD](https://www.coin-or.org/CppAD/)
   * Mac: `brew install cppad`
