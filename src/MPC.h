@@ -85,7 +85,7 @@ class MPC {
   void Init(Eigen::VectorXd x0);
   // Solve the model given an initial state and polynomial coefficients.
   // Return the first actuations.
-  MPC_OUTPUT Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs);
+  MPC_OUTPUT Solve(Eigen::VectorXd state, Eigen::VectorXd last_control, Eigen::VectorXd coeffs);
 private:
   CppAD::ipopt::solve_result<Dvector> last_sol_;
   int time_ctr = -1;
@@ -94,8 +94,6 @@ private:
   int N_;
   double dt_;
   Configuration& config_;
-
-  Dvector last_control_;
 
   // ipopt options
   std::string options_;

@@ -173,7 +173,14 @@ int main(int argc, char *argv[]) {
           Eigen::VectorXd state(6);
           state << 0, 0, 0, v, cte, epsi;
 
-          auto mpc_output = mpc.Solve(state, coeffs);
+
+          double last_steering = j[1]["steering_angle"];
+          double last_throttle = j[1]["throttle"];
+
+          Eigen::VectorXd last_control(2);
+          last_control << last_steering, last_throttle;
+
+          auto mpc_output = mpc.Solve(state, last_control, coeffs);
 
           double steer_value;
           double throttle_value;
