@@ -210,11 +210,16 @@ void MPC::Init(Eigen::VectorXd x0)
     constraints_upperbound_[i] = 0;
   }
 
+  // Initialize saved control vector
+  last_control_ = Dvector(2);
+  last_control_[0] = 0;
+  last_control_[1] = 0;
+
   cout<<"Initialization complete."<<endl;
   is_initialized_ = true;
 }
 
-MPC_OUTPUT MPC::Solve(Eigen::VectorXd x0, Eigen::VectorXd last_control, Eigen::VectorXd coeffs) {
+MPC_OUTPUT MPC::Solve(Eigen::VectorXd x0, Eigen::VectorXd coeffs) {
   if(!is_initialized_)
   {
     Init(x0);
@@ -229,15 +234,15 @@ MPC_OUTPUT MPC::Solve(Eigen::VectorXd x0, Eigen::VectorXd last_control, Eigen::V
 
   // Apply Lag compensation
   double dt = config_.p_lag;
-  double delta = last_control[0];
-  double a = 0; //last_control[1];
+  double delta = last_control_[0];
+  double a = last_control_[1];
 
-  // x = x + v*cos(psi)*dt;
-  // y = y + v*sin(psi)*dt;
-  // psi = psi + v*delta/Lf *dt;
-  // v = v + a*dt;
-  // cte = cte + (v * sin(epsi) * dt);
-  // epsi = epsi + v * delta / Lf * dt;
+  x = x + v*cos(psi)*dt;
+  y = y + v*sin(psi)*dt;
+  psi = psi + v*delta/Lf *dt;
+  v = v + a*dt;
+  cte = cte + (v * sin(epsi) * dt);
+  epsi = epsi + v * delta / Lf * dt;
 
   vars_[x_start] = x;
   vars_[y_start] = y;
@@ -287,10 +292,12 @@ MPC_OUTPUT MPC::Solve(Eigen::VectorXd x0, Eigen::VectorXd last_control, Eigen::V
 
   double steering = sol_x[delta_start];
   double throttle = sol_x[a_start];
-  cout<<"Throttle : "<<throttle<<endl;
+
   auto output = MPC_OUTPUT(steering, throttle, next_x_vals, next_y_vals);
 
   last_sol_ = solution;
+  last_control_[0] = steering;
+  last_control_[1] = throttle;
 
   return output;
 }

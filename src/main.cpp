@@ -102,8 +102,8 @@ Configuration load_config(std::string filename)
     std::cout << "Can't load "<<filename<<std::endl;
     throw 1;
   }
-  cfg.ref_v = 0.0;
   cfg.v_max = reader.GetReal("ref","v_mph", 25)*.447;
+  cfg.ref_v = cfg.v_max;
   cfg.w_cte = reader.GetReal("weights", "w_cte", 1.0);
   cfg.w_epsi = reader.GetReal("weights", "w_epsi", 1.0);
   cfg.w_v = reader.GetReal("weights", "w_v", 1.0);
@@ -173,14 +173,7 @@ int main(int argc, char *argv[]) {
           Eigen::VectorXd state(6);
           state << 0, 0, 0, v, cte, epsi;
 
-
-          double last_steering = j[1]["steering_angle"];
-          double last_throttle = j[1]["throttle"];
-
-          Eigen::VectorXd last_control(2);
-          last_control << last_steering, last_throttle;
-
-          auto mpc_output = mpc.Solve(state, last_control, coeffs);
+          auto mpc_output = mpc.Solve(state, coeffs);
 
           double steer_value;
           double throttle_value;
